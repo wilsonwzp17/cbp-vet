@@ -1,0 +1,25 @@
+# --- data & large artifacts (never committed) ---
+data/*
+!data/.gitkeep
+*.npz
+*.fits
+*.ckpt
+*.h5
+*.hdf5
+lightkurve-cache/
+mast_cache/
+
+# --- private planning docs (published selectively at T0, never before) ---
+docs/internal/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+*.egg-info/
+.pytest_cache/
+
+# --- os ---
+.DS_Store
