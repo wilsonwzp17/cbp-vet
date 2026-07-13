@@ -54,3 +54,11 @@ Done: Repo live and public. Abstract reviewed and the ML-vetting focus endorsed;
   (keeps the "vetting" scope, no over-claims). Reviewed an inbound data-handling
   notebook set; queued a Week-1 pipeline cross-check.
 Next: finish and submit the abstract (Fri Jul 10); then generate the Week-1 agenda.
+
+## 2026-07-10 (Wk 0 close)
+Done: Abstract submitted through the registration form (229 words; general
+  audience; keeps the "vetting" scope; no over-claims, no performance numbers).
+  Final wording archived at docs/abstract/. Week 0 complete: repo live, pipeline
+  reproduction validated, novelty gate closed, abstract submitted.
+Next: minor line-edits at the final deadline (Tue Jul 14); then Week 1 begins
+  (operate the pipeline at scale; expand training-data generation).
