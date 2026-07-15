@@ -48,7 +48,7 @@ from mono_cbp.utils.eclipses import time_to_phase, get_eclipse_mask
 # ----------------------------------------------------------------------------
 # Configuration (no magic constants buried in the logic below)
 # ----------------------------------------------------------------------------
-MONO_CBP_DIR = Path("/Users/wilsonwu/mono-cbp")
+MONO_CBP_DIR = Path(os.environ.get("MONO_CBP_DIR", Path.home() / "mono-cbp"))
 CATALOGUE_PATH = MONO_CBP_DIR / "catalogues" / "TEBC_morph_05_P_7.csv"
 SECTOR_TIMES_PATH = MONO_CBP_DIR / "catalogues" / "sector_times.csv"
 BUNDLED_NPZ = MONO_CBP_DIR / "data" / "TIC_260128333_06.npz"
