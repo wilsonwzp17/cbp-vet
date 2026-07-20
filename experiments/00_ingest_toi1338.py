@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 """
-00_ingest_toi1338.py  —  cbp-vet Week-0 ingestion head-start.
+00_ingest_toi1338.py -- validate the data path on TOI-1338.
 
-Goal (the load-bearing assumption for the whole project): prove we can rebuild a
-mono-cbp input light curve *from raw MAST* and run the mono-cbp search end-to-end
-on it, recovering the same reference monotransit that the bundled example data
-yields. If this works, the Week-1/2 dataset factory (thousands of light curves,
-injection campaigns) rests on solid ground.
+Goal: prove we can rebuild a mono-cbp input light curve from raw MAST data and
+run the mono-cbp search end-to-end on it, recovering the same reference
+monotransit that the bundled example data yields. Everything downstream
+(bulk downloads, injection campaigns) rests on this working.
 
 Target: TIC 260128333 = TOI-1338, sector 6.
 Reference event (mono-cbp/examples/results/detected_events.txt, S6 strong event):

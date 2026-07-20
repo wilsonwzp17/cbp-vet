@@ -9,7 +9,7 @@ data/*
 lightkurve-cache/
 mast_cache/
 
-# --- private planning docs (published selectively at T0, never before) ---
+# --- internal notes ---
 docs/internal/
 
 # --- python ---

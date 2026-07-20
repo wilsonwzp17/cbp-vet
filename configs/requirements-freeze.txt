@@ -1,5 +1,4 @@
-# cbp-vet Week-0 environment freeze — conda env 'mono-cbp', 2026-07-06
-# python 3.9.23
+# Package versions for this project (conda, Python 3.9). Frozen 2026-07-06.
 aiobotocore==2.26.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.5

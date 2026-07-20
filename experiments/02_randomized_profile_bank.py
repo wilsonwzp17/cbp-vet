@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-02_randomized_profile_bank.py  --  W2.2 step 3 prototype.
+02_randomized_profile_bank.py -- randomized transit-profile bank for injections.
 
-Problem found in W2.2: mono-cbp's injector randomizes only the injection TIME.
+The issue: mono-cbp's injector randomizes only the injection TIME.
 The transit SHAPE comes from a fixed bank (the stock bank is a 7x7 grid of depth x
 duration, all at impact parameter 0 and one limb-darkening law). For training data we
 need variety in WHAT is injected, so a classifier learns transit morphology, not the
@@ -17,8 +17,8 @@ transit physics/math is identical to the library; we only randomize the paramete
   limb dark  ~ randomized quadratic coefficients
 The injector then injects each of these at a random time into random light curves.
 
-(Ingress/egress asymmetry, to mimic the moving secondary, is a Week-3 refinement:
- batman transits are symmetric; add it later via an eccentric/warped model.)
+(Ingress/egress asymmetry, to mimic the moving secondary, is a later refinement:
+ batman transits are symmetric; add it via an eccentric/warped model.)
 
 Usage:
     conda activate mono-cbp
@@ -111,7 +111,7 @@ def main():
           f"{len(np.unique(np.round(inj_d,6)))} distinct values across {len(ir)} tests")
     rec_col = [c for c in ir.columns if 'recover' in c.lower()]
     print(f"  result columns: {list(ir.columns)}")
-    print("\nW2.2 CLOSED: extraction works; randomized injection achieved via our own profile bank.")
+    print("\nDone: randomized injection achieved via our own profile bank.")
 
 
 if __name__ == "__main__":
