@@ -26,3 +26,10 @@ venv/
 
 # run logs
 download*.log
+
+# ELC scratch: 3,600 model dirs, regenerable from the driver + seed
+data/elc_models/
+data/campaign_out/
+data/pairfix_out/
+data/bench/
+data/search_frozen/
