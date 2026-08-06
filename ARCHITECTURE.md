@@ -50,7 +50,7 @@ M1 grid (selection on val PR-AUC only), matched-recall head-to-head, banked.
 | `cbpvet/models/arms.py` | feature-model arms | `load_matrix` is the single gate; arm contract = fitted features == `training_scalars` |
 | `cbpvet/physics.py` | eccentricity from eclipses, Holman–Wiegert, period draws | corrected Winn relation; mu = 0.3 pinned |
 
-Experiments `07`–`20` are the drivers, numbered in dependency order; each docstring states what it produces, why, and the traps it avoids (these docstrings are the primary in-repo documentation and record every measured defect).
+Experiments `07`–`24` are the drivers, numbered in dependency order; each docstring states what it produces, why, and the traps it avoids (these docstrings are the primary in-repo documentation and record every measured defect). `21` freezes the T0 models and completes the pinned harness; `22`–`24` are the deployment runway: staging + the extended sector-times fix (proven in both directions), the parameterized mask→find driver, and the sealed completion for the third real-planet host.
 
 ## The invariants (break these and the benchmark stops meaning anything)
 
@@ -65,7 +65,7 @@ Experiments `07`–`20` are the drivers, numbered in dependency order; each docs
 
 ## The frozen benchmark
 
-`data/bench/full/`: `bench_full.h5` (188,732 events), `MANIFEST_bench-v1.md` (all rules), `DATASHEET_bench-v1.md` (honest limitations), `FREEZE_bench-v1.json` (SHA-256 of every frozen artifact), `probe_results.json`, `t0_core.json` + `t0_addendum_2026-08-06.json` (the dual metric, the pinned-denominator restatement, and the frozen model checkpoints in `models/`, written by `experiments/21_freeze_models.py` only after reproducing every banked number), and `ERRATA_bench-v1.md` — post-freeze corrections live there, never as edits to frozen files, so the hashes stay true. Planning, decisions, and the full defect history live in the project docs folder (see the manifest's pointers), notably the build tutorial's error registers — 26 resolved defects, each with cause, evidence, and fix.
+`data/bench/full/`: `bench_full.h5` (188,732 events), `MANIFEST_bench-v1.md` (all rules), `DATASHEET_bench-v1.md` (honest limitations), `FREEZE_bench-v1.json` (SHA-256 of every frozen artifact), `probe_results.json`, `t0_core.json` + `t0_addendum_2026-08-06.json` (the dual metric, the pinned-denominator restatement, and the frozen model checkpoints in `models/`, written by `experiments/21_freeze_models.py` only after reproducing every banked number), and `ERRATA_bench-v1.md` — post-freeze corrections live there, never as edits to frozen files, so the hashes stay true. Planning, decisions, and the full defect history live in the project docs folder (see the manifest's pointers), notably the build tutorial's error registers — 33 resolved defects, each with cause, evidence, and fix.
 
 ## Building on top
 
