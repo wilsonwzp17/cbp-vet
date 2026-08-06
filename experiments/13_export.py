@@ -201,6 +201,27 @@ def main():
 
     # ---- campaign events -------------------------------------------------
     sources = [(args.campaign_dir, "bank_injection")]
+    def dir_pair_model_version(d):
+        """Read the pair-model version the run RECORDED about itself.
+
+        Guessing from the path name mislabelled data twice (an "elc" basename
+        collision, then a pairfix dir whose model had been upgraded under it).
+        The campaign writes pins.pair_model_version into its own summary, so
+        that is the source of truth; ELC dirs have no bank pair model at all
+        and get -1, meaning "not applicable: pairs are real dynamics".
+        """
+        sj = os.path.join(d, "campaign_summary.json")
+        if os.path.exists(sj):
+            try:
+                pins = json.load(open(sj)).get("pins", {})
+                if "pair_model_version" in pins:
+                    return int(pins["pair_model_version"])
+            except Exception:
+                pass
+        if "elc" in os.path.abspath(d).lower():
+            return -1
+        return 1
+
     for d in args.extra_dirs:
         # Test the FULL path: data/elc_batch/pilot basenames to "pilot", so
         # matching on the basename silently labelled ELC events as bank ones.
@@ -209,6 +230,7 @@ def main():
         sources.append((d, src))
 
     for camp_dir, label_source in sources:
+      source_version = dir_pair_model_version(camp_dir)
       camp = load_campaign_events(camp_dir, args.limit)
       # One TEST is one injection: events must relate only within it.
       exp.set_system_events(camp, key=("tic", "sector", "model_idx"))
@@ -230,7 +252,7 @@ def main():
         # v2 = the ELC-calibrated pair anchoring from the re-injection; v1 = the
         # anchoring the 60k campaign ran with. Kept per row so the composition
         # is auditable in the manifest rather than inferred.
-        rec["pair_model_version"] = 2 if "pairfix" in os.path.abspath(camp_dir).lower() else 1
+        rec["pair_model_version"] = source_version
         # Distinctive label: two different sources can share a basename.
         rec["source_dir"] = os.path.relpath(camp_dir, REPO)
         event_no = len(records)

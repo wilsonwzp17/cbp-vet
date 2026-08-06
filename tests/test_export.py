@@ -65,11 +65,18 @@ def test_scalar_budget():
     and this is the one case where the plan itself specifies the additions.
     """
     names = schema.all_scalar_names(INCUMBENT_COLS)
-    assert len(names) == 40
+    # 40 -> 39 on 2026-08-06: the stress test found has_pair_same_star EQUALLED
+    # the label (AUC 1.0000) because it came from injection bookkeeping. The two
+    # star-identity flags are gone forever - star identity is unobservable for a
+    # real event - replaced by ONE observed flag (has_observed_pair), so the
+    # gated set went 5 -> 4 and the budget 40 -> 39.
+    assert len(names) == 39
     assert len(schema.CORE_SCALARS) == 16
-    # +1 more on 2026-08-04: pair_duration_ratio, leg 3 of the anti-CNN sentence,
-    # which the plan named but which had never been built.
     assert "pair_duration_ratio" in schema.GATED_PAIR_SCALARS
+    assert "has_observed_pair" in schema.GATED_PAIR_SCALARS
+    assert "has_pair_same_star" not in names and "has_pair_cross_star" not in names
+    # audit isolation: injection truth can never be a feature
+    assert not (set(schema.AUDIT_COLUMNS) & set(schema.training_scalars(INCUMBENT_COLS)))
     for s in ("rec_depth_med", "rec_depth_mad", "rec_frac_dipping"):
         assert s in names, f"{s} is named by W3.1b and must be present"
 
@@ -229,7 +236,7 @@ def test_skye_flag_is_invalid_for_injections(exporter):
     imputed; an imputed value is indistinguishable from a measured one.
     """
     rec = {"skye_flag": np.nan, "morph_coeff": 0.2, "tmag": 11.0,
-           "has_pair_same_star": 1.0, "has_pair_cross_star": 0.0,
+           "has_observed_pair": 1.0, "pair_duration_ratio": 0.3,
            "pair_dt_over_pbin": 0.2, "pairing_depth_ratio_vs_expectation": 0.1}
     bits = exporter.scalar_valid(rec)
     assert bits["skye_flag"] == 0

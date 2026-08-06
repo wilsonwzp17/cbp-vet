@@ -19,8 +19,14 @@ def local_view(time, flux, event_time, t_dur):
     """[2, 201] view of the event: normalised flux plus a validity mask.
 
     The grid is fixed in units of the event's own duration, so a 0.1 d event and
-    a 0.9 d event occupy the same number of bins. Without that, duration would
-    be readable straight off the view's shape.
+    a 0.9 d event occupy the same number of bins and the FLUX SHAPE is
+    duration-normalised. HONESTY CORRECTION 2026-08-06: the claim that duration
+    is therefore unreadable was measured FALSE for the mask channel - at fixed
+    cadence, occupied-bin density is a monotone function of t_dur (channel-1
+    valid-fraction separates the classes at AUC 0.653 on the full shard).
+    Since t_dur is itself a sanctioned core scalar this adds no new information
+    class, but a CNN arm receives it ungated; the disposition (disclose as
+    recovery physics vs normalise occupancy) is a freeze-registry item A4.
 
     Channel 1 marks which bins had real data. Gaps are genuinely informative,
     since real false positives cluster near them, but they must be declared
@@ -202,7 +208,7 @@ def pairing_depth_ratio_vs_expectation(observed_ratio, expected_ratio):
 
 
 def nearest_pair_partner(event_time, event_duration, other_times, other_durations,
-                         p_bin):
+                         p_bin, other_depths=None):
     """Leg 3: the duration ratio against the nearest event inside the pair window.
 
     THE PHYSICS. A planet crossing a binary crosses two DIFFERENT stars, on
@@ -229,29 +235,39 @@ def nearest_pair_partner(event_time, event_duration, other_times, other_duration
     positives get theirs from the other flagged events of the same test. Neither
     uses injection truth, so the feature is computable at deployment.
 
-    Returns (ratio, dt_days, n_candidates); ratio is NaN when the system has no
-    other event inside the window, which must be MASKED rather than imputed.
+    Returns (ratio, dt_days, n_candidates, partner_depth); ratio is NaN when the
+    system has no other event inside the window, which must be MASKED rather
+    than imputed. partner_depth is the nearest in-window event's measured depth
+    (NaN when absent or not supplied), so the OBSERVED pair depth ratio can be
+    built from flagged events alone -- the injection-truth partner_ratio must
+    never be a feature (2026-08-06: the truth-derived has_pair flags were found
+    to equal the label verbatim, AUC 1.0000).
     """
     other_times = np.asarray(other_times, dtype=float)
     other_durations = np.asarray(other_durations, dtype=float)
     if other_times.size == 0 or not np.isfinite(event_duration) or event_duration <= 0:
-        return np.nan, np.nan, 0
+        return np.nan, np.nan, 0, np.nan
 
     lo = max(MIN_PAIR_WINDOW_DAYS, float(event_duration))
     hi = 0.5 * float(p_bin)
     if hi <= lo:
-        return np.nan, np.nan, 0
+        return np.nan, np.nan, 0, np.nan
 
     dt = np.abs(other_times - float(event_time))
     inside = (dt >= lo) & (dt <= hi) & np.isfinite(other_durations) & (other_durations > 0)
     if not inside.any():
-        return np.nan, np.nan, 0
+        return np.nan, np.nan, 0, np.nan
 
     j = int(np.argmin(np.where(inside, dt, np.inf)))
     d_other = float(other_durations[j])
     d_self = float(event_duration)
     ratio = min(d_self, d_other) / max(d_self, d_other)
-    return float(ratio), float(dt[j]), int(inside.sum())
+    dep = np.nan
+    if other_depths is not None:
+        od = np.asarray(other_depths, dtype=float)
+        if od.size == other_times.size and np.isfinite(od[j]):
+            dep = float(od[j])
+    return float(ratio), float(dt[j]), int(inside.sum()), dep
 
 
 MIN_PAIR_WINDOW_DAYS = 0.15

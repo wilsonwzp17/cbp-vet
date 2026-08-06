@@ -88,7 +88,13 @@ PAIR_RATE = 0.37
 # in the frozen shards. v1 = the rate/ratio the 60k campaign ran with; v2 = the
 # ELC-calibrated correction applied by the pair-subset re-injection under
 # Amendment 3B.6's pre-named response to a census disagreement.
-PAIR_MODEL_VERSION = 2
+# 3 = the full-batch refit of 2026-08-04 late evening: geometric factor fitted on
+# 1,399 real ELC pairs across 124 hosts (grazing non-transits and stellar-eclipse
+# contamination both guarded), census depth-ratio agreement 3.3 percent.
+# 2 was the 30-pair/3-host fit (overshot, 92.7 percent off); 1 the original
+# lognormal. The library (cbpvet/injection/pair_model.py) carries v3 NOW, so
+# stamping anything else here would make the manifest lie about its own data.
+PAIR_MODEL_VERSION = 3
 # CORRECTED 2026-08-04, and the earlier comment here is RETRACTED.
 #
 # The previous text claimed PAIR_RATE = 0.37 was "an OBSERVED/DETECTED incidence

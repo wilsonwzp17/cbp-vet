@@ -22,7 +22,9 @@ History of this model, kept so the change is auditable:
    reality.
 2. Refit on **30 pairs from 3 hosts**. Overshot in the other direction: the
    census then measured ELC 0.3526 against the bank's 0.1830, off 92.7 percent.
-3. This refit, on **1,446 pairs from 150 hosts** — 48x the sample.
+3. This refit: after the grazing and stellar-eclipse guards, **1,399 pairs
+   across 124 hosts** survive (of 150 hosts generated; 26 contribute no clean
+   cross-star pair) — 47x the sample of the 30-pair fit.
 
 The quantity fitted is the geometric factor alone, `g = (d2/d1) / host_ratio`,
 so the physical anchor stays where it belongs and only the measured part is

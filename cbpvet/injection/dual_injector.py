@@ -389,7 +389,14 @@ class DualInjector(TransitInjector):
                 "inj_depth": float(depth_model),
                 "inj_duration": float(duration_model),
                 "label": int(is_injection),
-                "pair_role": "lead" if is_lead else ("partner" if is_partner else "none"),
+                # 2026-08-06 semantic fix: 'lead' requires an actually-injected
+                # partner. Before this, every recovered unpaired injection was
+                # stamped 'lead', which made pair_role a copy of the label; the
+                # exporter no longer consumes pair_role as a feature at all
+                # (audit column truth_pair_role only), but the run artifact
+                # should still mean what its name says.
+                "pair_role": ("lead" if (is_lead and partner_injected)
+                              else ("partner" if is_partner else "none")),
                 "pair_id": f"{self.run_id}_{tic}_{sector}_{model_idx}" if partner_injected else "",
                 "partner_dt": float(partner["dt"]) if partner is not None else np.nan,
                 "partner_ratio": partner_ratio,

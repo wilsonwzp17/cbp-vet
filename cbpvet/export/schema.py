@@ -88,9 +88,22 @@ HOST_SCALARS = [
 ]
 
 # Admitted only if the E2 gate passes; otherwise present but masked invalid.
+#
+# CORRECTION OF RECORD, 2026-08-06 (pre-freeze stress test, critical finding).
+# The previous set included has_pair_same_star / has_pair_cross_star derived
+# from injection bookkeeping. Measured on the full shard: has_pair_same_star
+# EQUALLED the label (P(label=1 | x=1) = 1.000000 over 66,320 rows; single-
+# column TIC-grouped val ROC-AUC 1.0000), because pair_role was stamped on
+# every recovered injection while real events carried none. No probe covered
+# the pair scalars, so nothing would have caught it at the freeze.
+#
+# The doctrine this enforces: STAR IDENTITY IS UNOBSERVABLE FOR A REAL EVENT
+# (that is ELC's entire point), so no observed feature may claim it. Same-star
+# versus cross-star classification exists only in ELC audit columns. Every
+# gated feature below is computed from OBSERVED flagged events, identically for
+# both classes, by exporter._observed_partner -> features.nearest_pair_partner.
 GATED_PAIR_SCALARS = [
-    "has_pair_same_star",
-    "has_pair_cross_star",
+    "has_observed_pair",
     "pair_dt_over_pbin",
     "pairing_depth_ratio_vs_expectation",
     # Leg 3 of the plan's anti-CNN sentence: "transit duration varies with binary
@@ -103,6 +116,18 @@ GATED_PAIR_SCALARS = [
 
 # Scalars that can be undefined per event; the bit vector covers these.
 CONDITIONAL_SCALARS = ["skye_flag", "morph_coeff", "tmag"] + GATED_PAIR_SCALARS
+
+# Injection-truth and bookkeeping columns. Stored in every shard for audit and
+# diagnostics; FORBIDDEN as features. The regression suite asserts none of
+# these ever appears in training_scalars, and the arm contract test (to be
+# written with the arms) must assert each arm's fitted feature list equals
+# training_scalars exactly.
+AUDIT_COLUMNS = [
+    "truth_pair_role", "truth_partner_dt", "truth_partner_ratio",
+    "pair_model_version", "source_dir", "rebalance_keep", "split",
+    "event_key", "label", "label_source", "inverted_lc", "incumbent_valid",
+    "n_cycles_raw",
+]
 
 LABEL_SOURCES = ["real_search", "bank_injection", "elc_injection"]
 
@@ -125,6 +150,18 @@ LABEL_SOURCES = ["real_search", "bank_injection", "elc_injection"]
 WITHHELD_SCALARS = {
     "gap_proximity": "probe 6 FAIL at 0.5684 (gate 0.55); Amendment 3B.5 "
                      "pre-named response applied 2026-08-04",
+    # PROVISIONAL 2026-08-06, ratify at the tag. skye_flag is finite for
+    # exactly the real_search rows and NaN for every injection, so
+    # finite-vs-NaN identifies the class with probability 1 (measured:
+    # P(label=1 | finite) = 0 over 3,672 finite rows). An XGBoost arm routes
+    # NaN natively and would learn finite => negative; at deployment EVERY
+    # event is real-search and skye-valid, so the model would push everything
+    # toward negative. No imputation fixes a train/deploy validity mismatch,
+    # so it is withheld from features (kept in shards for diagnostics and the
+    # M0 funnel, where it belongs). Follows the 3B.5 withholding pattern; the
+    # promotion of this from provisional to pinned is a tag-time item.
+    "skye_flag": "validity-pattern leak: finite <=> real_search, measured "
+                 "2026-08-06; withheld provisionally pending tag ratification",
 }
 
 

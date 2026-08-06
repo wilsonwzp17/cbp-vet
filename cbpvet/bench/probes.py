@@ -105,11 +105,17 @@ def _grouped_split(groups, test_size=0.25):
     return next(gss.split(np.zeros(len(groups)), groups=groups))
 
 
-def _auc(model, X, y, groups):
-    """Fit on a TIC-grouped train split and score on the held-out systems."""
+def _auc(model, X, y, groups, split_masks=None):
+    """Fit on a TIC-grouped train split and score on the held-out systems.
+
+    ``split_masks``: optional (train_idx, val_idx). At full scale the caller
+    passes the shard's FROZEN split (2026-08-06 fix: the docstring promised
+    this but the code always drew its own GroupShuffleSplit, so probe
+    certification ran on a different TIC partition than the arms will use).
+    """
     if len(np.unique(y)) < 2:
         return np.nan, 0
-    tr, va = _grouped_split(groups)
+    tr, va = split_masks if split_masks is not None else _grouped_split(groups)
     if len(np.unique(y[tr])) < 2 or len(np.unique(y[va])) < 2:
         return np.nan, len(va)
     model.fit(X[tr], y[tr])
@@ -138,7 +144,7 @@ def probe_1_inversion(labels, inverted):
     }
 
 
-def probe_2_provenance(scalars, label_source, labels, groups):
+def probe_2_provenance(scalars, label_source, labels, groups, split_masks=None):
     """Bank against ELC, positives only, on the whole scalar block."""
     m = (labels == 1)
     y = label_source[m]
@@ -149,26 +155,47 @@ def probe_2_provenance(scalars, label_source, labels, groups):
                         "probe 2 cannot run until ELC positives exist"}
     X = np.nan_to_num(scalars[m], nan=0.0, posinf=0.0, neginf=0.0)
     yy = (y == classes[1]).astype(int)
+    sm = None
+    if split_masks is not None:
+        tr_all, va_all = split_masks
+        pos_idx = np.flatnonzero(m)
+        remap = -np.ones(len(labels), dtype=int)
+        remap[pos_idx] = np.arange(len(pos_idx))
+        sm = (remap[np.intersect1d(tr_all, pos_idx)], remap[np.intersect1d(va_all, pos_idx)])
     model = HistGradientBoostingClassifier(max_iter=300, early_stopping=True,
                                            random_state=SEED)
-    auc, n = _auc(model, X, yy, groups[m])
+    auc, n = _auc(model, X, yy, groups[m], split_masks=sm)
     return {"probe": 2, "name": "provenance (bank vs ELC)", "metric": "val ROC-AUC",
-            "value": auc, "n_val": n, "gate": GATE_AUC,
-            "pass": bool(auc <= GATE_AUC) if np.isfinite(auc) else None}
+            "value": auc, "auc_folded": float(max(auc, 1 - auc)) if np.isfinite(auc) else None,
+            "n_val": n, "gate": GATE_AUC,
+            "pass": bool(auc <= GATE_AUC) if np.isfinite(auc) else None,
+            "note_folded": "gate is the RATIFIED one-sided auc <= 0.55; the folded "
+                           "value max(auc, 1-auc) is reported because an "
+                           "anti-predictive probe is equally a leak - whether the "
+                           "gate becomes two-sided is a tag decision"}
 
 
-def probe_single_column(idx, column_values, labels, groups, name, reported_only=False):
+def probe_single_column(idx, column_values, labels, groups, name, reported_only=False,
+                        split_masks=None):
     """Probes 3, 5, 6, 7: can ONE scalar alone predict the label?"""
     x = np.asarray(column_values, dtype=float).reshape(-1, 1)
     ok = np.isfinite(x).ravel()
     if ok.sum() < 50 or len(np.unique(labels[ok])) < 2:
         return {"probe": idx, "name": name, "value": None, "pass": None,
                 "note": f"insufficient finite values ({int(ok.sum())})"}
+    sm = None
+    if split_masks is not None:
+        tr_all, va_all = split_masks
+        ok_idx = np.flatnonzero(ok)
+        remap = -np.ones(len(ok), dtype=int)
+        remap[ok_idx] = np.arange(len(ok_idx))
+        sm = (remap[np.intersect1d(tr_all, ok_idx)], remap[np.intersect1d(va_all, ok_idx)])
     X = RobustScaler().fit_transform(x[ok])
     model = LogisticRegression(class_weight="balanced", max_iter=1000, random_state=SEED)
-    auc, n = _auc(model, X, labels[ok], groups[ok])
+    auc, n = _auc(model, X, labels[ok], groups[ok], split_masks=sm)
     return {
         "probe": idx, "name": name, "metric": "val ROC-AUC", "value": auc,
+        "auc_folded": float(max(auc, 1 - auc)) if np.isfinite(auc) else None,
         "n_val": n, "gate": None if reported_only else GATE_AUC,
         "reported_only": reported_only,
         "pass": None if reported_only else (bool(auc <= GATE_AUC) if np.isfinite(auc) else None),

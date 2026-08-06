@@ -181,7 +181,10 @@ def test_scalar_budget_matches_what_is_actually_built():
     names = schema.all_scalar_names(INCUMBENT_COLS)
     # 36 (original pin) -> 39 (three recurrence stack scalars, R1)
     #                    -> 40 (pair_duration_ratio, leg 3, R9)
-    assert len(names) == 40
+    #                    -> 39 (2026-08-06: the two star-identity flags removed
+    #                       after the stress test measured has_pair_same_star ==
+    #                       label at AUC 1.0000; replaced by has_observed_pair)
+    assert len(names) == 39
     assert len(set(names)) == len(names), "duplicate scalar names"
 
 
@@ -286,7 +289,7 @@ def test_leg_three_cannot_see_an_eclipse_residual_a_known_design_limit():
     """
     P = 11.5
     # A genuine eclipse residual: identical duration, ONE BINARY PERIOD apart.
-    r_ecl, dt_ecl, n_ecl = features.nearest_pair_partner(
+    r_ecl, dt_ecl, n_ecl, _ = features.nearest_pair_partner(
         100.0, 0.30, np.array([100.0 + P]), np.array([0.30]), P)
     assert n_ecl == 0, "the pair window should not reach dt = P_bin"
     assert np.isnan(r_ecl), (
@@ -295,7 +298,7 @@ def test_leg_three_cannot_see_an_eclipse_residual_a_known_design_limit():
         "punch definition changed with it")
 
     # A punch pair IS visible, and does give a small ratio.
-    r_pln, _, n_pln = features.nearest_pair_partner(
+    r_pln, _, n_pln, _ = features.nearest_pair_partner(
         100.0, 0.55, np.array([100.0 + 2.3]), np.array([0.064]), P)
     assert n_pln == 1
     assert r_pln < 0.3, f"a punch pair gave {r_pln:.3f}"

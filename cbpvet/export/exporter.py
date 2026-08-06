@@ -179,8 +179,10 @@ class EventExporter:
         cols = [c for c in key if c in t.columns]
         for gk, g in t.groupby([t[c] for c in cols] if len(cols) > 1 else t[cols[0]]):
             gk = gk if isinstance(gk, tuple) else (gk,)
+            deps = (g["depth"].to_numpy(dtype=float) if "depth" in g.columns
+                    else np.full(len(g), np.nan))
             self._sys_events[tuple(int(x) for x in gk)] = (
-                g[tcol].to_numpy(dtype=float), g["duration"].to_numpy(dtype=float))
+                g[tcol].to_numpy(dtype=float), g["duration"].to_numpy(dtype=float), deps)
 
     def build_record(self, ev, label_source, local_flux_source=None):
         """One event to one record. ``ev`` is a dict-like row."""
@@ -248,33 +250,63 @@ class EventExporter:
             # --- host-level constants ---
             "same_star_multi_allowed": host["same_star_multi_allowed"],
             "log10_pp_over_pbin": host["log10_pp_over_pbin"],
-            # --- gated pair scalars ---
-            "has_pair_same_star": float(ev.get("pair_role", "none") != "none"),
-            "has_pair_cross_star": float(ev.get("pair_role", "none") == "partner"),
-            "pair_dt_over_pbin": (abs(float(ev["partner_dt"])) / host["p_bin"]
-                                  if np.isfinite(ev.get("partner_dt", np.nan)) else np.nan),
-            "pair_duration_ratio": self._pair_duration_ratio(
-                tuple(int(ev[c]) for c in getattr(self, "_sys_key", ("tic",))
-                      if c in ev) or (tic,), t_ev, t_dur, host["p_bin"]),
-            "pairing_depth_ratio_vs_expectation":
-                features.pairing_depth_ratio_vs_expectation(
-                    ev.get("partner_ratio", np.nan), host["depth_ratio"]),
             "n_cycles_raw": n_cycles,
         }
+        # --- gated pair scalars: OBSERVED quantities only (2026-08-06) --------
+        # From the system's other flagged events, one code path for both
+        # classes. The injection-truth versions below are AUDIT columns and are
+        # excluded from training_scalars by schema + regression test.
+        obs = self._observed_partner(
+            tuple(int(ev[c]) for c in getattr(self, "_sys_key", ("tic",))
+                  if c in ev) or (tic,), t_ev, t_dur, depth, host["p_bin"])
+        obs_depth_ratio = (obs["depth_other"] / depth
+                           if np.isfinite(obs["depth_other"]) and depth > 0 else np.nan)
+        rec.update({
+            "has_observed_pair": float(np.isfinite(obs["dt"])),
+            "pair_dt_over_pbin": (obs["dt"] / host["p_bin"]
+                                  if np.isfinite(obs["dt"]) else np.nan),
+            "pair_duration_ratio": obs["ratio"],
+            "pairing_depth_ratio_vs_expectation":
+                features.pairing_depth_ratio_vs_expectation(
+                    obs_depth_ratio, host["depth_ratio"]),
+            # --- injection-truth AUDIT columns, never features ---
+            # NOTE: in runs before 2026-08-06 the injector stamped pair_role
+            # 'lead' on every recovered injection, paired or not; interpret via
+            # tests_all.csv's partner_injected when auditing those runs.
+            "truth_pair_role": str(ev.get("pair_role", "none")),
+            "truth_partner_dt": float(ev.get("partner_dt", np.nan)),
+            "truth_partner_ratio": float(ev.get("partner_ratio", np.nan)),
+        })
         self.stats["records"] += 1
         return rec, local, recur
 
     # ------------------------------------------------------------------
-    def _pair_duration_ratio(self, tic, t_ev, t_dur, p_bin):
-        """Leg 3, computed from the system's OTHER flagged events. NaN if none."""
-        sys_ev = getattr(self, "_sys_events", {}).get(tic if isinstance(tic, tuple) else (int(tic),))
+    def _observed_partner(self, key, t_ev, t_dur, this_depth, p_bin):
+        """Everything the pair features may legally know: OBSERVED flagged events.
+
+        CORRECTION OF RECORD, 2026-08-06. The gated pair features were previously
+        derived from injection bookkeeping (pair_role, partner_dt, partner_ratio).
+        The pre-freeze stress test measured the consequence: has_pair_same_star
+        EQUALLED the label, single-column val ROC-AUC 1.0000, because pair_role
+        was stamped on every recovered injection and real events carried none.
+
+        The doctrine this enforces: star identity is UNOBSERVABLE for a real
+        event -- that is ELC's entire point -- so no observed feature may claim
+        it. Same-star/cross-star classification lives ONLY in ELC audit columns.
+        What a vetter can actually observe about a candidate pair is: whether
+        another flagged event of the same system sits inside the per-system pair
+        window, how far away, its duration ratio, and its depth ratio. All four
+        are computed here, identically for both classes, from flagged events
+        alone, so they are exactly as computable at deployment as in training.
+        """
+        sys_ev = getattr(self, "_sys_events", {}).get(key if isinstance(key, tuple) else (int(key),))
         if sys_ev is None:
-            return np.nan
-        times, durs = sys_ev
+            return {"ratio": np.nan, "dt": np.nan, "n": 0, "depth_other": np.nan}
+        times, durs, deps = sys_ev
         keep = np.abs(times - float(t_ev)) > 1e-9      # exclude the event itself
-        ratio, _, _ = features.nearest_pair_partner(
-            t_ev, t_dur, times[keep], durs[keep], p_bin)
-        return ratio
+        ratio, dt, n, dep = features.nearest_pair_partner(
+            t_ev, t_dur, times[keep], durs[keep], p_bin, other_depths=deps[keep])
+        return {"ratio": ratio, "dt": dt, "n": n, "depth_other": dep}
 
     def scalar_valid(self, rec):
         """Bit vector over the conditional scalars.

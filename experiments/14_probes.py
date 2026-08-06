@@ -81,6 +81,22 @@ def main():
 
     labels = df.label.to_numpy().astype(int)
     groups = df.tic.to_numpy()
+
+    # At full scale, certify on the shard's FROZEN split (train fits, val
+    # scores), exactly the partition the arms will use. The probes module
+    # docstring promised this; before 2026-08-06 the code drew its own
+    # GroupShuffleSplit at every scale.
+    split_masks = None
+    certified_split = "provisional GroupShuffleSplit(seed 0)"
+    if args.scale == "full" and "split" in df.columns:
+        sp = df["split"].astype(str).to_numpy()
+        tr_idx = np.flatnonzero(sp == "train")
+        va_idx = np.flatnonzero(sp == "val")
+        if len(tr_idx) and len(va_idx):
+            split_masks = (tr_idx, va_idx)
+            certified_split = "frozen shard split (train fits, val scores)"
+            log.info("Probes certify on the FROZEN split: %d train / %d val events",
+                     len(tr_idx), len(va_idx))
     results = []
 
     # ---- probe 1: inversion balance ------------------------------------
@@ -91,7 +107,7 @@ def main():
                    + schema.HOST_SCALARS if c in df.columns]
     X = df[scalar_cols].to_numpy(dtype=float)
     results.append(probes.probe_2_provenance(
-        X, df.label_source.to_numpy(), labels, groups))
+        X, df.label_source.to_numpy(), labels, groups, split_masks=split_masks))
 
     # ---- probe 3: eclipse-phase distance --------------------------------
     cat = load_catalogue(CAT_PATH, TEBC=True).drop_duplicates("tess_id").set_index("tess_id")
@@ -112,12 +128,36 @@ def main():
             continue
         results.append(probes.probe_single_column(
             pnum, df[col].to_numpy(), labels, groups, name,
-            reported_only=pnum in probes.REPORTED_ONLY))
+            reported_only=pnum in probes.REPORTED_ONLY, split_masks=split_masks))
 
     # ---- probe 4: host identity ----------------------------------------
     results.append(probes.probe_4_host_identity(local, df.tic.to_numpy().astype(int)))
 
     results.sort(key=lambda r: r["probe"])
+
+    # ---- reported-only DIAGNOSTIC screens (not the seven ratified probes) --
+    # Added 2026-08-06 after the stress test found a pair scalar that equalled
+    # the label with no probe watching. Two families: (a) each gated pair
+    # scalar as a single-column screen; (b) validity patterns - can
+    # isfinite(x) alone predict the label? Neither family GATES tonight;
+    # promoting any of them to a gate is a tag decision.
+    diagnostics = []
+    for i, col in enumerate(schema.GATED_PAIR_SCALARS):
+        if col in df.columns:
+            d = probes.probe_single_column(
+                100 + i, df[col].to_numpy(dtype=float), labels, groups,
+                f"DIAG pair scalar: {col}", reported_only=True,
+                split_masks=split_masks)
+            diagnostics.append(d)
+    for i, col in enumerate(schema.CONDITIONAL_SCALARS):
+        if col in df.columns:
+            fin = np.isfinite(df[col].to_numpy(dtype=float)).astype(float)
+            if 0 < fin.mean() < 1:
+                d = probes.probe_single_column(
+                    200 + i, fin, labels, groups,
+                    f"DIAG validity pattern: isfinite({col})", reported_only=True,
+                    split_masks=split_masks)
+                diagnostics.append(d)
 
     # ---- MDE -------------------------------------------------------------
     n_tics = int(df.tic.nunique())
@@ -126,7 +166,7 @@ def main():
     target = 0.10
 
     print("\n" + "=" * 78)
-    print(f"SEVEN PROBES  ({args.scale} scale)")
+    print(f"SEVEN PROBES  ({args.scale} scale; certified on: {certified_split})")
     print("=" * 78)
     for r in results:
         v = r.get("value")
@@ -147,6 +187,12 @@ def main():
     print(f"  MDE: {mde_val:.4f} absolute on {n_tics} distinct TICs at pbar={pbar:.3f}")
     print(f"       target effect {target:.2f}. "
           f"{'ADEQUATE' if mde_val <= target else 'EXCEEDS TARGET: pre-named response is to widen the stratum'}")
+    print("  DIAGNOSTIC SCREENS (reported-only, never gated tonight):")
+    for d in diagnostics:
+        v = d.get("value"); fv = d.get("auc_folded")
+        vs = " n/a " if v is None else f"{v:.4f}"
+        fs = "" if fv is None else f"  folded {fv:.4f}"
+        print(f"    {d['name'][:52]:54s} {vs}{fs}")
     gated = [r for r in results if r.get("pass") is not None]
     n_fail = sum(1 for r in gated if not r["pass"])
     print(f"  {len(gated)} probes evaluated, {n_fail} failing, "
@@ -160,7 +206,8 @@ def main():
                    "n_events_before_rebalance": int(n_before),
                    "n_events": int(len(df)), "n_tics": n_tics, "pbar": pbar,
                    "mde_absolute": mde_val, "mde_target": target,
-                   "probes": results}, fh, indent=2, default=str)
+                   "certified_split": certified_split,
+                   "probes": results, "diagnostics": diagnostics}, fh, indent=2, default=str)
     log.info("Wrote %s", out)
 
 
