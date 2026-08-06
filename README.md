@@ -10,14 +10,25 @@ fail and candidate vetting has relied on manual inspection. This project trains
 classifiers to separate real transits from false positives, benchmarked against
 mono-cbp's heuristic vetting.
 
-Work in progress (summer 2026). First results expected August 2026; the
-conference abstract is in [docs/abstract.md](docs/abstract.md).
+**Status (August 2026):** the benchmark is frozen (`bench-v1`: 188,732 labelled
+events behind seven adversarial leak probes and a frozen by-system split), and
+the first head-to-head is banked: at the incumbent heuristics' own recall on
+the headline depth stratum, the trained model cuts manual-inspection false
+positives per 1,000 light curves by roughly 8x, with the dual reading (recall
+at the incumbent's false-positive budget) confirming the same margin. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for the module map, the data flow, and the
+invariants; `data/bench/full/` artifacts (manifest, datasheet, errata, T0
+tables) document every rule and every known limitation.
 
 ## Layout
 
-- `experiments/` — numbered scripts, one per step (data validation, downloads,
-  injection profiles)
-- `cbpvet/` — the package (dataset export, benchmark, models); being built
+- `cbpvet/` — the package: search extension, dual-injection engine, calibrated
+  pair models, dataset export + schema, leak probes, frozen split, model arms
+- `experiments/` — numbered drivers in dependency order; each docstring states
+  what it produces, why, and the traps it avoids
+- `notebooks/` — the executed end-to-end walkthrough of the data engine
+- `tests/` — invariant guards (verbatim-copy parity, arm feature contract,
+  sign-invariance, split integrity)
 - `configs/` — pinned package versions
 - `data/` — light-curve cache and outputs (not tracked)
 

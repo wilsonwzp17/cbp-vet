@@ -65,7 +65,7 @@ Experiments `07`–`20` are the drivers, numbered in dependency order; each docs
 
 ## The frozen benchmark
 
-`data/bench/full/`: `bench_full.h5` (188,732 events), `MANIFEST_bench-v1.md` (all rules), `DATASHEET_bench-v1.md` (honest limitations), `FREEZE_bench-v1.json` (SHA-256 of every frozen artifact), `probe_results.json`, `t0_core.json`. Planning, decisions, and the full defect history live in the project docs folder (see the manifest's pointers), notably the build tutorial's error registers — 26 resolved defects, each with cause, evidence, and fix.
+`data/bench/full/`: `bench_full.h5` (188,732 events), `MANIFEST_bench-v1.md` (all rules), `DATASHEET_bench-v1.md` (honest limitations), `FREEZE_bench-v1.json` (SHA-256 of every frozen artifact), `probe_results.json`, `t0_core.json` + `t0_addendum_2026-08-06.json` (the dual metric, the pinned-denominator restatement, and the frozen model checkpoints in `models/`, written by `experiments/21_freeze_models.py` only after reproducing every banked number), and `ERRATA_bench-v1.md` — post-freeze corrections live there, never as edits to frozen files, so the hashes stay true. Planning, decisions, and the full defect history live in the project docs folder (see the manifest's pointers), notably the build tutorial's error registers — 26 resolved defects, each with cause, evidence, and fix.
 
 ## Building on top
 

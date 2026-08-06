@@ -23,7 +23,8 @@ def local_view(time, flux, event_time, t_dur):
     duration-normalised. HONESTY CORRECTION 2026-08-06: the claim that duration
     is therefore unreadable was measured FALSE for the mask channel - at fixed
     cadence, occupied-bin density is a monotone function of t_dur (channel-1
-    valid-fraction separates the classes at AUC 0.653 on the full shard).
+    valid-fraction separates the classes at AUC 0.6515 on the frozen full
+    shard, 0.6451 on rebalance-kept rows; measured 2026-08-06 sweep).
     Since t_dur is itself a sanctioned core scalar this adds no new information
     class, but a CNN arm receives it ungated; the disposition (disclose as
     recovery physics vs normalise occupancy) is a freeze-registry item A4.
