@@ -233,8 +233,14 @@ def main():
     assert len(tests) == len(program_of_test), (len(tests), len(program_of_test))
     tests = tests.copy()
     tests["program"] = program_of_test
-    tests["rp_over_rstar_model"] = np.sqrt(tests["depth_model"].astype(float)) \
-        if "depth_model" in tests.columns else np.nan
+    # CORRECTION OF RECORD 2026-08-07: the first run looked for 'depth_model'
+    # (not a tests_frame column) and wrote all-NaN; the injector records the
+    # injected depth as 'inj_depth'. The banked tests_all.csv was rewritten
+    # with the corrected column (campaign_summary.json 'corrections').
+    if "inj_depth" not in tests.columns:
+        raise RuntimeError("tests_frame lacks inj_depth; refuse to write a "
+                           "NaN radius axis")
+    tests["rp_over_rstar_model"] = np.sqrt(tests["inj_depth"].astype(float))
     tests.to_csv(os.path.join(OUT, "tests_all.csv"), index=False)
     events.to_csv(os.path.join(OUT, "events_all.csv"), index=False)
 

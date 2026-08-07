@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BENCH = os.path.join(REPO, "data", "bench", "full")
 
-LABELS = ["incumbent\n(OP-B)", "arm b0\nincumbent info only", "arm b\nfull features"]
+LABELS = ["incumbent\n(OP-B)", "arm b0\n(incumbent\ninfo only)", "arm b\n(full\nfeatures)"]
 
 
 def build(out_path):
@@ -42,7 +42,10 @@ def build(out_path):
     d = add["dual_recall_at_m0_matched_fp"]
 
     plt.rcParams.update({"font.size": 12})
-    fig, ax = plt.subplots(1, 2, figsize=(9.6, 3.6))
+    fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.2))
+    fig.subplots_adjust(wspace=0.42)
+    for a in ax:
+        a.tick_params(axis="x", labelsize=10)
     vals = [1000 * f / n_test for f in (fp_m0, fp_b0, fp_b)]
     ci_lo, ci_hi = (c * n_real / n_test for c in ci)
     ax[0].bar(LABELS, vals, color=["#777777", "none", "#4878a8"],
