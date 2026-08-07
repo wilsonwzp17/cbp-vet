@@ -269,20 +269,29 @@ def main():
     ap.add_argument("--comparator-workers", type=int, default=8)
     args = ap.parse_args()
     cfg = json.load(open(args.config))
-    is_fixture = "fixtures" in str(cfg.get("frozen_shard", ""))
-    if not is_fixture and args.comparator_workers != 1:
+    # Guardrails key off the ARMED flag (robust), not a path substring: an
+    # armed config gets every guard regardless of where its data lives. The
+    # path check below is only the backstop that forces non-fixture configs
+    # to declare themselves armed in the first place.
+    armed = bool(cfg.get("armed"))
+    if armed and args.comparator_workers != 1:
         raise RuntimeError(
             "ARMED runs require --comparator-workers 1 (the sealed-leak "
             "guardrail: parallel workers write per-event rows to a shared "
             "/tmp path). Enforced in code, not by memory.")
-    if not is_fixture and not isinstance(cfg.get("tess_train_n_cycles"), list):
+    if armed and not isinstance(cfg.get("tess_train_n_cycles"), list):
         raise RuntimeError(
             "tess_train_n_cycles must be the LITERAL list of values "
             "(inline the 'values' array from "
             "data/oneshot/tess_train_n_cycles.json), not a file path.")
     out_dir = cfg["out_dir"]
+    if armed and os.path.isdir(out_dir) and os.listdir(out_dir):
+        raise RuntimeError(
+            f"ARMED runs require a FRESH output directory; {out_dir} exists "
+            "and is not empty. A stale file in the sealed out_dir is exactly "
+            "the ambiguity the freeze cannot afford.")
     os.makedirs(out_dir, mode=0o700, exist_ok=True)
-    if not is_fixture:
+    if armed:
         os.chmod(out_dir, 0o700)          # enforce even if the dir pre-existed
 
     # ---- 1. opening asserts ------------------------------------------------
