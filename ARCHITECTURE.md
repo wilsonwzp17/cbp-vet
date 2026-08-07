@@ -67,6 +67,29 @@ Experiments `07`–`24` are the drivers, numbered in dependency order; each docs
 
 `data/bench/full/`: `bench_full.h5` (188,732 events), `MANIFEST_bench-v1.md` (all rules), `DATASHEET_bench-v1.md` (honest limitations), `FREEZE_bench-v1.json` (SHA-256 of every frozen artifact), `probe_results.json`, `t0_core.json` + `t0_addendum_2026-08-06.json` (the dual metric, the pinned-denominator restatement, and the frozen model checkpoints in `models/`, written by `experiments/21_freeze_models.py` only after reproducing every banked number), and `ERRATA_bench-v1.md` — post-freeze corrections live there, never as edits to frozen files, so the hashes stay true. Planning, decisions, and the full defect history live in the project docs folder (see the manifest's pointers), notably the build tutorial's error registers — 33 resolved defects, each with cause, evidence, and fix.
 
+## The deployment and one-shot layer (experiments 22–28)
+
+Everything below points the frozen model at data it has never seen. The layer adds no new learning and never edits the frozen chain; its invariants are inherited plus three of its own.
+
+```
+data/deploy_staged (COPIES, extended sector-times 1..103; 22_stage_deployment.py)
+   │  23_deploy_run.py: same mask→find chain as the frozen search (invariant 3)
+   ▼
+deployment TCEs ──► 25_deploy_score.py: FROZEN exporter (unmodified) + comparator
+   │                → scoring shard → hash-asserted frozen checkpoint →
+   ▼                ranked_all + shortlist v1 (LOCAL ONLY, 15 pinned columns)
+detectability (28_detectability.py): dual 50/50 injections into the same masked
+   staged copies (a fourth provenance, injector-rows-only label), per-system
+   golden + aggregate, disjoint-from-frozen headline split
+one-shot (26_one_shot.py, RUNS ONCE): opening hash asserts → pools (frozen-shard
+   rows + fresh frozen-exporter passes) → score once at the frozen tau →
+   D1/D2 matching vs transcribed PUBLIC times tables → Wilson intervals,
+   per-mission rollup → hashed outputs. Reviewed against synthetic fixtures
+   (26_fixtures.py) only, until the day it runs.
+```
+
+The three new invariants: **(9) the scoring model is hash-asserted before any work** — every ranking or evaluation refuses to start unless the checkpoint hashes to the pre-shot log; **(10) scoring uses the same single feature gate as training** (`arms.score_matrix`: identical forbidden-column contract, no ad-hoc feature lists); **(11) the sealed evaluation is fixture-reviewed, never dry-run** — the one-shot script is exercised exclusively on synthetic fixtures with hand-computed expected outputs until its single real execution.
+
 ## Building on top
 
 - New features: add to `schema.py`, compute in `features.py` identically for both classes, screen with a probe/diagnostic **before** offering to models.

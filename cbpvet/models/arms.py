@@ -89,6 +89,26 @@ def load_matrix(shard_path, arm, splits=("train", "val")):
     return X, y, groups, vbits, {"features": feats, "split": sp, "n": len(df)}
 
 
+def score_matrix(df, arm):
+    """The single feature gate for SCORING (deployment, one-shot).
+
+    Same forbidden-column contract as ``load_matrix``, but takes an in-memory
+    DataFrame and applies NO split or rebalance filtering: scoring targets
+    (the deployment queue, the sealed real-planet shards) have no split and
+    every row must be scored. Added 2026-08-07 for the deployment run and the
+    one-shot so neither builds its own ad-hoc feature path.
+    """
+    feats = training_columns(arm)
+    missing = [c for c in feats if c not in df.columns]
+    if missing:
+        raise KeyError(f"arm {arm}: scoring frame lacks {missing}")
+    forbidden = set(feats) & (set(schema.AUDIT_COLUMNS) | set(schema.WITHHELD_SCALARS))
+    if forbidden:
+        raise AssertionError(f"arm {arm}: forbidden columns {forbidden}")
+    X = df[feats].to_numpy(dtype=float)
+    return X, feats
+
+
 def impute_for_dense(X, vbits, medians=None):
     """Median-impute + append validity bits, for LR/RF. Fit medians on train."""
     Xi = X.copy()
